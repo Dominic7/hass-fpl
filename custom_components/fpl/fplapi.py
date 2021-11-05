@@ -259,7 +259,7 @@ class FplApi(object):
         _LOGGER.info(f"Getting data from energy service")
         URL = "https://www.fpl.com/dashboard-api/resources/account/{account}/energyService/{account}"
 
-        date = str(lastBilledDate.strftime("%m%d%Y"))
+        date = str(date.today().strftime("%m%d%Y"))
         JSON = {
             "recordCount": 24,
             "status": 2,
@@ -268,10 +268,10 @@ class FplApi(object):
             "accountType": "RESIDENTIAL",
             "revCode": "1",
             "premiseNumber": premise,
-            "projectedBillFlag": True,
-            "billComparisionFlag": True,
-            "monthlyFlag": True,
-            "frequencyType": "Daily",
+            "projectedBillFlag": false,
+            "billComparisionFlag": false,
+            "monthlyFlag": false,
+            "frequencyType": "Hourly",
             "lastBilledDate": date,
             "applicationPage": "resDashBoard",
         }
@@ -283,32 +283,10 @@ class FplApi(object):
             if response.status == 200:
                 r = (await response.json())["data"]
                 dailyUsage = []
-
+                currentHour = (datetime.datetime.now().hour - 1) % 24
                 # totalPowerUsage = 0
-                if "data" in r["DailyUsage"]:
-                    for daily in r["DailyUsage"]["data"]:
-                        if (
-                            "kwhUsed" in daily.keys()
-                            and "billingCharge" in daily.keys()
-                            and "date" in daily.keys()
-                            and "averageHighTemperature" in daily.keys()
-                        ):
-                            dailyUsage.append(
-                                {
-                                    "usage": daily["kwhUsed"],
-                                    "cost": daily["billingCharge"],
-                                    "date": daily["date"],
-                                    "max_temperature": daily["averageHighTemperature"],
-                                }
-                            )
-                            # totalPowerUsage += int(daily["kwhUsed"])
-
-                    # data["total_power_usage"] = totalPowerUsage
-                    data["daily_usage"] = dailyUsage
-
-                data["projectedKWH"] = r["CurrentUsage"]["projectedKWH"]
-                data["dailyAverageKWH"] = r["CurrentUsage"]["dailyAverageKWH"]
-                data["billToDateKWH"] = r["CurrentUsage"]["billToDateKWH"]
+                if "data" in r["HourlyUsage"]: 
+                    data["projectedKWH"] = r["HourlyUsage"]["data"][currentHour]["reading"]
         return data
 
     async def __getDataFromApplianceUsage(self, account, lastBilledDate) -> dict:
